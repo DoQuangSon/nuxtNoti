@@ -20,6 +20,12 @@ module.exports = {
   /*
   ** Build configuration
   */
+  plugins: [
+    {
+      src: '~/plugins/sw.js',
+      ssr: false
+    }
+  ],
   build: {
     /*
     ** Run ESLint on save
@@ -36,5 +42,13 @@ module.exports = {
     }
   },
   router: { base: '/nuxtNoti/' },
+
+  server: {
+    host: '172.16.18.145',
+    // https: {
+    //   key: fs.readFileSync(path.resolve(__dirname, 'server.key')),
+    //   cert: fs.readFileSync(path.resolve(__dirname, 'server.crt'))
+    // },
+  }
 }
 
