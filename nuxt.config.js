@@ -20,12 +20,12 @@ module.exports = {
   /*
   ** Build configuration
   */
-  plugins: [
-    {
-      src: '~/plugins/sw.js',
-      ssr: false
-    }
-  ],
+  // plugins: [
+  //   {
+  //     src: '~/plugins/sw.js',
+  //     ssr: false
+  //   }
+  // ],
   build: {
     /*
     ** Run ESLint on save
@@ -49,6 +49,27 @@ module.exports = {
     //   key: fs.readFileSync(path.resolve(__dirname, 'server.key')),
     //   cert: fs.readFileSync(path.resolve(__dirname, 'server.crt'))
     // },
-  }
+  },
+
+  buildModules: [
+    '@nuxtjs/pwa',
+  ],
+  /*
+  ** Nuxt.js modules
+  */
+  modules: [
+    // Doc: https://axios.nuxtjs.org/usage
+    '@nuxtjs/axios',
+    '@nuxtjs/pwa',
+  ],
+  pwa: {
+    // workbox: {
+    //   /* workbox options */
+    //   autoRegister: true
+    // }
+    workbox: {
+      importScripts: ['custom-sw.js']
+    },
+  },
 }
 

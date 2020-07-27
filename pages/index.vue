@@ -1,71 +1,65 @@
 <template>
-  <div class="container">
-    <div>
-      <Logo />
-      <h1 class="title">NuxtWebPush</h1>
-
-      <div class="buttons">
-        <button class="trigger-push" @click="triggerPush()">Trigger Push Notification</button>
+  <div>
+    <div class="container flex flex-wrap mx-auto px-4">
+      <div class="w-full sm:w-1/2 rounded-lg p-2" style="box-shadow:1px 2px 4px gray;">
+        <h2>Daftar Mendapatkan Notifikasi</h2>
+        <br />
+        <button
+          type="button"
+          @click="permission"
+          class="aktif-notif hover:bg-white hover:text-black bg-blue p-2 border-solid rounded-lg"
+        >Subscribe</button>
+        <br />
       </div>
-
-      <div class="buttons">
-        <button class="trigger-push" @click="test()">Test</button>
+      <div class="w-full sm:w-1/2 rounded-lg p-2" style="box-shadow:1px 2px 4px gray;">
+        <h2>Kirim Notifikasi</h2>
+        <br />
+        <form action="#" @submit.prevent="kirim">
+          <div class="mb-4">
+            <label class="block text-grey-darker text-sm font-bold mb-2" for="title">title</label>
+            <input
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-grey-darker leading-tight focus:outline-none focus:shadow-outline"
+              id="title"
+              type="text"
+              placeholder="title"
+              v-model="vdata.title"
+            />
+          </div>
+          <div class="mb-4">
+            <label class="block text-grey-darker text-sm font-bold mb-2" for="content">content</label>
+            <input
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-grey-darker leading-tight focus:outline-none focus:shadow-outline"
+              id="content"
+              type="text"
+              placeholder="content"
+              v-model="vdata.content"
+            />
+          </div>
+          <button
+            type="submit"
+            class="hover:bg-white hover:text-black bg-green-light p-2 border-solid rounded-lg"
+          >Notifikasi</button>
+        </form>
       </div>
-
-      <button
-        type="button"
-        @click="permission"
-        class="aktif-notif hover:bg-white hover:text-black bg-blue p-2 border-solid rounded-lg"
-      >Subscribe</button>
     </div>
   </div>
 </template>
-
 <script>
 import axios from "axios";
 export default {
   data() {
     return {
+      vdata: {},
       publicVapidKey:
         "BA2UWcTHEy2Ri7DSggjsN70hviNGp-IvDorcACV2IjCDWOBXiDog5wl1eZ7MvW7Yx5kX7CgsC7MyrCoUo5oQPqc",
     };
   },
   methods: {
-    test() {
-      let result = axios
-        .get("http://localhost:4000/api")
-        .then((res) => {
-          console.log("res", res);
-        })
-        .catch((err) => {
-          console.log(err);
-        });
-      alert(result);
-      console.log("result", result);
+    kirim() {
+      axios.post("http://localhost:4000/api", this.vdata).then((res) => {
+        console.log(res);
+      });
     },
-    triggerPush() {
-      this.triggerPushNotification().catch((error) => console.error(error));
-    },
-    async triggerPushNotification() {
-      if ("serviceWorker" in navigator) {
-        console.log("navigator.serviceWorker", navigator.serviceWorker);
-        const register = await navigator.serviceWorker.register("/sw.js", {
-          scope: "/",
-        });
-        console.log("waiting for acceptance");
-        const subscription = await register.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: this.urlBase64ToUint8Array(this.publicVapidKey),
-        });
-        console.log("acceptance complete", subscription);
-        await axios
-          .post("https://localhost:4000/subscribe", subscription)
-          .then((res) => console.log(res));
-      } else {
-        console.error("Service workers are not supported in this browser");
-      }
-    },
-
     permission() {
       if ("Notification" in window) {
         Notification.requestPermission((result) => {
@@ -81,16 +75,94 @@ export default {
         alert("notifikasi tidak didukung ");
       }
     },
-
-    urlBase64ToUint8Array(base64String) {
+    confPushSub() {
+      let that = this;
+      if (!("serviceWorker" in navigator)) {
+        // cek apakah service worker ada/tidak
+        return;
+      }
+      navigator.serviceWorker.ready.then(function (sw) {
+        console.log(sw);
+        sw.pushManager.getSubscription().then((sub) => {
+          // cek apakah device ini sudah subscribe atau belum
+          if (sub === null) {
+            sw.pushManager
+              .subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: that.urlB64ToUint8Array(
+                  this.publicVapidKey
+                ),
+              })
+              .then((subscription) => {
+                console.log("Subscribe OK:", subscription);
+                return fetch("http://localhost:4000/subscribe", {
+                  method: "POST",
+                  body: JSON.stringify(subscription.toJSON()),
+                  headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                  },
+                });
+              })
+              .then(() => {
+                that.newNotif("Berhasil Subscribe");
+                console.log("Server Stored Subscription.");
+              })
+              .catch((err) => {
+                console.log("Subscribe Error:", err);
+              });
+          } else {
+            that.newNotif("Subscribtion sudah ada");
+          }
+        });
+      });
+    },
+    newNotif(msg) {
+      // cek apakah service worker sudah teregister
+      let opt = {
+        body: msg, //adalah text dari notifikasi yang lebih jelas dari title
+        icon: "../icons/app-icon-96x96.png", // bisa url ke luar atau local image
+        image: "../icon.png", // memunculkan image di notifikasi
+        dir: "ltr", // left to right (ltr) atau right to left (rtl)
+        lang: "en-US", //standard
+        vibrate: [100, 50, 200], // device bergetar apabila ada notifikasi
+        badge: "../icon.png", // icon kecil di drawer
+        // sound: '../notif.mp3', // sound saat notifikasi masuk (belum semua support)
+        //! advance option
+        // tag: 'confirm-notification', // kita men set tag agar notifikasi tidak menstack di device
+        // renotify: true, // apabila tag sama di dalam beberapa notifikasi, maka status notifikasi akan dianggap baru dan device akan bergetar, jadi apabila false maka tag sama device tidak akan bergetar
+        actions: [
+          //! list aksi saat notifikasi di pilih
+          {
+            action: "confirm",
+            title: "Yes",
+            icon: "../icon.png",
+          },
+          {
+            action: "cancel",
+            title: "No",
+            icon: "../icon.png",
+          },
+        ],
+      };
+      //! cara memunculkan notifikasi dengan windows object
+      // new Notification('new notif', opt)
+      //! cara menjalankan notifikasi dari service worker melalui navigator
+      if ("serviceWorker" in navigator) {
+        // apabila service worker ada , maka jalankan notifikasi melalui service worker
+        navigator.serviceWorker.ready.then(function (sw) {
+          // service worker menjalankan notifikasi
+          sw.showNotification("Subscribe", opt);
+        });
+      }
+    },
+    urlB64ToUint8Array(base64String) {
       const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
       const base64 = (base64String + padding)
-        .replace(/-/g, "+")
+        .replace(/\-/g, "+")
         .replace(/_/g, "/");
-
       const rawData = window.atob(base64);
       const outputArray = new Uint8Array(rawData.length);
-
       for (let i = 0; i < rawData.length; ++i) {
         outputArray[i] = rawData.charCodeAt(i);
       }
@@ -99,36 +171,3 @@ export default {
   },
 };
 </script>
-
-<style>
-.container {
-  margin: 0 auto;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-.title {
-  font-family: "Quicksand", "Source Sans Pro", -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  display: block;
-  font-weight: 300;
-  font-size: 100px;
-  color: #35495e;
-  letter-spacing: 1px;
-}
-
-.subtitle {
-  font-weight: 300;
-  font-size: 42px;
-  color: #526488;
-  word-spacing: 5px;
-  padding-bottom: 15px;
-}
-
-.links {
-  padding-top: 15px;
-}
-</style>
